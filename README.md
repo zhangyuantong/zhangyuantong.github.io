@@ -1,4 +1,4 @@
-# zhang-yuantong.github.io
+# zhangyuantong.github.io
 
 Personal site. Plain HTML, one stylesheet, one script, and a 150-line build
 script. No template engine, no dependencies, no framework — the HTML in this
