@@ -11,7 +11,7 @@ repo is exactly what the browser gets.
 | Homepage copy, subtitle, photo, links | `index.html` |
 | CV | `cv/index.html` |
 | Post list | generated — see below |
-| One article | `posts/<slug>/index.html` |
+| One article | `posts/<slug>.md` (the HTML next to it is generated) |
 | Nav bar, footer, page glow | `partials/nav.html`, `partials/footer.html`, `partials/aurora.html` |
 | Colours, type, spacing, motion | `assets/style.css` (colour variables at the top) |
 | Behaviour | `assets/main.js` |
@@ -64,22 +64,53 @@ Do not edit inside a `START` / `END` marker pair — `build.py` overwrites it.
 
 ## Adding a post
 
-1. Make a folder `posts/<slug>/`, e.g. `posts/hurst/`
-2. Copy `posts/snail/index.html` into it
-3. Change the title, `<time datetime="2025-10-19">2025.10.19</time>`, the
-   `<h1>`, `<meta name="description">` and `<meta name="post:tags">`
-4. Write the body inside `<article class="article-body wrap">`
-5. Run `python build.py`
+Write a Markdown file, not HTML.
 
-The list on `/posts/` updates by itself, newest first.
+1. Create `posts/<slug>.md`, e.g. `posts/hurst.md`
+2. Start it with front matter:
 
-Maths works out of the box: write `$...$` inline or `$$...$$` on its own line
-and KaTeX renders it. If a page has no maths, delete the first two `<script>`
-tags at the bottom (`katex.min.js`, `auto-render.min.js`) to make it lighter.
+   ```
+   ---
+   title: Hurst Exponent, Slowly
+   date: 2026-11-02
+   tags: time-series, statistics
+   excerpt: One or two sentences for the list and for search engines.
+   ---
+   ```
+
+   `title` and `date` are required. `tags` and `excerpt` are optional — with no
+   excerpt the first paragraph is used. `reading: 7` overrides the computed
+   reading time.
+
+3. Write the body in normal Markdown below the `---`.
+4. Run `python build.py`.
+
+That is it. `posts/<slug>/index.html` is generated, the row on `/posts/`
+appears by itself, newest first.
+
+Maths works: `$inline$` or `$$` on its own lines. It is lifted out before the
+Markdown is parsed, so `<`, `>`, `&` and `_` inside formulas are safe.
+
+Code fences, tables, nested lists, blockquotes and strikethrough all work.
+Raw HTML in Markdown is escaped, not rendered — deliberately, so a typo cannot
+break the page.
 
 ## Deleting a post
 
-Delete the folder `posts/<slug>/` and run `python build.py`.
+Delete `posts/<slug>.md` and run `python build.py`. The list updates itself.
+
+The generated folder `posts/<slug>/` is not removed automatically; `build.py`
+prints a warning naming it so you can delete it.
+
+## What is generated, what is not
+
+| Path | Who owns it |
+|---|---|
+| `posts/*.md` | you |
+| `posts/<slug>/index.html` | `build.py` — edits are overwritten |
+| `posts/index.html` | you, except the block between `POSTLIST` markers |
+| `index.html`, `cv/index.html`, `404.html` | you, except blocks between markers |
+| `partials/*` | you — one copy each |
 
 ## Changing the palette
 
@@ -141,17 +172,22 @@ GitHub Pages rebuilds in about a minute. There is no server-side build.
 index.html              homepage / about
 cv/index.html           CV
 posts/index.html        post list (generated block inside)
-posts/<slug>/index.html one folder per article
+posts/<slug>.md         one article, in Markdown — this is what you edit
+posts/<slug>/index.html the same article, generated
 about/index.html        old /about/ link, redirects home
 404.html
+partials/aurora.html    the background glow, written once
 partials/nav.html       the nav, written once
 partials/footer.html    the footer, written once
-partials/aurora.html    the background glow, written once
+partials/post.html      the shell every article is poured into
 partials/post-row.html  template for one row of the post list
-build.py                pastes the partials in and builds the post list
+build.py                Markdown -> HTML, and pastes the partials in
 .githooks/pre-commit    refuses a commit when the build is stale
 assets/style.css        all styling
 assets/main.js          all behaviour
 assets/katex/           KaTeX, vendored (no CDN)
 assets/about_photo.jpg  homepage photo
 ```
+
+`build.py` needs `markdown-it-py`. It is already installed in both Python
+environments on this machine; elsewhere, `pip install markdown-it-py`.

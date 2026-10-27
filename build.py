@@ -1,60 +1,87 @@
 #!/usr/bin/env python
-"""Assemble the repeated parts of the site.
+"""Assemble the site.
 
-Everything that appears on more than one page lives in partials/ and is
-pasted in here between HTML markers:
+Two jobs:
 
-    <!-- AURORA:START -->   ... <!-- AURORA:END -->
-    <!-- NAV:START -->      ... <!-- NAV:END -->
-    <!-- FOOTER:START -->   ... <!-- FOOTER:END -->
-    <!-- POSTLIST:START --> ... <!-- POSTLIST:END -->   (posts/index.html only)
+1. Fill the repeated blocks (aurora, nav, footer, post list) into the pages,
+   from the files in partials/.
 
-The post list is derived from the post pages themselves, so a new article
-shows up in the list without anyone touching the index.
+2. Turn posts/*.md into posts/<slug>/index.html.
 
-    python build.py            write the generated blocks
-    python build.py --check    exit 1 if any page is out of date
+    python build.py            write everything
+    python build.py --check    exit 1 if anything is out of date
+
+Articles are plain Markdown with a small front matter block:
+
+    ---
+    title: Traffic Jam for Snails
+    date: 2025-10-19
+    tags: brain-teaser, probability
+    excerpt: One or two sentences for the list and for search engines.
+    ---
+
+    Body starts here.
 """
 
+import html as html_mod
 import re
 import sys
 from pathlib import Path
 
+from markdown_it import MarkdownIt
+
 ROOT = Path(__file__).resolve().parent
 PARTIALS = ROOT / "partials"
+POSTS = ROOT / "posts"
 
-# page -> which nav item is the current one
+PAGES = [
+    "index.html",
+    "404.html",
+    "cv/index.html",
+    "posts/index.html",
+    "about/index.html",
+]
+
 NAV_ACTIVE = {
     "index.html": "about",
     "about/index.html": "about",
     "posts/index.html": "posts",
     "cv/index.html": "cv",
 }
-# posts/*/index.html are all "posts"
-POSTS_DIR = ROOT / "posts"
 
-TIME_RE = re.compile(r'<time datetime="([\d-]+)">([^<]+)</time>')
-TITLE_RE = re.compile(r'<section class="article-head wrap">.*?<h1>(.*?)</h1>', re.S)
-DESC_RE = re.compile(r'<meta name="description" content="([^"]*)"')
-TAGS_RE = re.compile(r'<meta name="post:tags" content="([^"]*)"')
-H1_LINE_RE = re.compile(r'^[ \t]*<h1>.*?</h1>\s*$', re.M)
+KATEX_HEAD = '<link rel="stylesheet" href="/assets/katex/katex.min.css">'
+KATEX_SCRIPTS = (
+    '<script src="/assets/katex/katex.min.js"></script>\n'
+    '<script src="/assets/katex/auto-render.min.js"></script>'
+)
+
+MD = MarkdownIt("commonmark", {"html": False, "breaks": True})
+for rule in ("table", "strikethrough"):
+    try:
+        MD.enable(rule)
+    except Exception:
+        pass
+
+# Math is lifted out of the Markdown before parsing and put back afterwards,
+# so that characters like < > * _ inside formulas survive untouched.
+MATH_PATTERNS = [
+    re.compile(r"\$\$[\s\S]+?\$\$"),
+    re.compile(r"\\\[[\s\S]+?\\\]"),
+    re.compile(r"(?<!\\)\$(?!\$)[^$\n]+?(?<!\\)\$"),
+    re.compile(r"\\\([\s\S]+?\\\)"),
+]
 
 
-def pages():
-    return sorted(set(ROOT.glob("*.html")) | set(ROOT.glob("*/index.html")) | set(ROOT.glob("*/*/index.html")))
-
-
-def nav_key(rel):
-    if rel in NAV_ACTIVE:
-        return NAV_ACTIVE[rel]
-    if rel.startswith("posts/"):
-        return "posts"
-    return ""
+# ---------------------------------------------------------------- blocks
 
 
 def indent_of(text, pos):
     line_start = text.rfind("\n", 0, pos) + 1
     return re.match(r"[ \t]*", text[line_start:]).group(0)
+
+
+def has_block(text, name):
+    return "<!-- %s:START -->" % name in text
 
 
 def fill(text, name, body):
@@ -76,93 +103,198 @@ def fill(text, name, body):
     return text[:line_start] + new + text[j:]
 
 
-def has_block(text, name):
-    return "<!-- %s:START -->" % name in text
+def nav_key(rel):
+    if rel in NAV_ACTIVE:
+        return NAV_ACTIVE[rel]
+    if rel.startswith("posts/"):
+        return "posts"
+    return ""
 
 
-def post_meta(path):
-    html = path.read_text(encoding="utf-8")
-    time_m = TIME_RE.search(html)
-    title_m = TITLE_RE.search(html)
-    desc_m = DESC_RE.search(html)
-    tags_m = TAGS_RE.search(html)
-    missing = [
-        label
-        for label, match in (
-            ('<time datetime="...">', time_m),
-            ("<h1> in .article-head", title_m),
-            ('<meta name="description">', desc_m),
-        )
-        if not match
-    ]
-    if missing:
-        raise SystemExit("%s is missing: %s" % (path.relative_to(ROOT), ", ".join(missing)))
+def render(rel, text, posts):
+    text = fill(text, "AURORA", (PARTIALS / "aurora.html").read_text(encoding="utf-8"))
+    text = fill(
+        text,
+        "NAV",
+        (PARTIALS / "nav.html")
+        .read_text(encoding="utf-8")
+        .replace("{{cur_about}}", ' aria-current="page"' if nav_key(rel) == "about" else "")
+        .replace("{{cur_posts}}", ' aria-current="page"' if nav_key(rel) == "posts" else "")
+        .replace("{{cur_cv}}", ' aria-current="page"' if nav_key(rel) == "cv" else ""),
+    )
+    text = fill(text, "FOOTER", (PARTIALS / "footer.html").read_text(encoding="utf-8"))
+    if has_block(text, "POSTLIST"):
+        text = fill(text, "POSTLIST", build_post_list(posts))
+    return text
 
-    tags = []
-    if tags_m:
-        tags = [t.strip() for t in tags_m.group(1).split(",") if t.strip()]
+
+# ---------------------------------------------------------------- posts
+
+
+def parse_front_matter(text):
+    if not text.startswith("---"):
+        raise SystemExit("post is missing its front matter block")
+    end = text.find("\n---", 3)
+    if end == -1:
+        raise SystemExit("post front matter is not closed with ---")
+
+    meta = {}
+    for line in text[3:end].splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, value = line.partition(":")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        meta[key.strip().lower()] = value
+
+    body = text[end + 4 :].lstrip("\n")
+    return meta, body
+
+
+def protect_math(text):
+    saved = []
+
+    def stash(match):
+        saved.append(match.group(0))
+        return "@@M%d@@" % (len(saved) - 1)
+
+    for pattern in MATH_PATTERNS:
+        text = pattern.sub(stash, text)
+    return text, saved
+
+
+def plain_text(markup):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", markup)).strip()
+
+
+def reading_minutes(body_html):
+    words = len(plain_text(body_html).split())
+    return max(1, round(words / 200))
+
+
+def load_post(path):
+    meta, body = parse_front_matter(path.read_text(encoding="utf-8"))
+    slug = path.stem
+
+    for key in ("title", "date"):
+        if key not in meta:
+            raise SystemExit("%s: front matter needs a '%s'" % (path.name, key))
+
+    protected, saved = protect_math(body)
+    body_html = MD.render(protected)
+    for i, chunk in enumerate(saved):
+        # entities decode back to the original characters in the text node,
+        # which keeps a bare < or & from being read as markup
+        safe = chunk.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        body_html = body_html.replace("@@M%d@@" % i, safe)
+
+    excerpt = meta.get("excerpt") or plain_text(body_html)[:157].rsplit(" ", 1)[0] + "…"
+    tags = [t.strip() for t in meta.get("tags", "").split(",") if t.strip()]
 
     return {
-        "date_iso": time_m.group(1),
-        "date_text": time_m.group(2).strip(),
-        "title": title_m.group(1).strip(),
-        "excerpt": desc_m.group(1).strip(),
+        "slug": slug,
+        "title": meta["title"],
+        "date_iso": meta["date"],
+        "date_text": meta["date"].replace("-", "."),
         "tags": tags,
-        "href": "/posts/%s/" % path.parent.name,
+        "excerpt": excerpt,
+        "reading": meta.get("reading") or str(reading_minutes(body_html)),
+        "body_html": body_html,
+        "has_math": "$" in body or "\\(" in body or "\\[" in body,
     }
 
 
-def post_row(post):
-    row = (PARTIALS / "post-row.html").read_text(encoding="utf-8")
-    tag_html = ""
-    if post["tags"]:
-        chips = "".join("<span>%s</span>" % t for t in post["tags"])
-        tag_html = '<div class="tags">%s</div>' % chips
-    return (
-        row.replace("{{href}}", post["href"])
-        .replace("{{date_iso}}", post["date_iso"])
-        .replace("{{date_text}}", post["date_text"])
-        .replace("{{title}}", post["title"])
-        .replace("{{excerpt}}", post["excerpt"])
-        .replace("{{tags}}", tag_html)
-    )
+def render_post(post):
+    tpl = (PARTIALS / "post.html").read_text(encoding="utf-8")
+    tags_line = " · ".join(post["tags"])
+
+    values = {
+        "{{title}}": html_mod.escape(post["title"]),
+        "{{excerpt}}": html_mod.escape(post["excerpt"], quote=True),
+        "{{tags_attr}}": html_mod.escape(", ".join(post["tags"]), quote=True),
+        "{{tags_line}}": html_mod.escape(tags_line),
+        "{{date_iso}}": post["date_iso"],
+        "{{date_text}}": post["date_text"],
+        "{{reading}}": post["reading"],
+        "{{katex_head}}": KATEX_HEAD if post["has_math"] else "",
+        "{{katex_scripts}}": KATEX_SCRIPTS if post["has_math"] else "",
+    }
+    for key, value in values.items():
+        tpl = tpl.replace(key, value)
+
+    return fill(tpl, "BODY", post["body_html"])
 
 
-def build_posts_list():
-    posts = [post_meta(p) for p in POSTS_DIR.glob("*/index.html")]
+def build_post_list(posts):
     if not posts:
         return ""
-    posts.sort(key=lambda p: p["date_iso"], reverse=True)
-    return "\n".join(post_row(p) for p in posts)
+    row = (PARTIALS / "post-row.html").read_text(encoding="utf-8")
+    rows = []
+    for post in sorted(posts, key=lambda p: p["date_iso"], reverse=True):
+        filled = (
+            row.replace("{{href}}", "/posts/%s/" % post["slug"])
+            .replace("{{date_iso}}", post["date_iso"])
+            .replace("{{date_text}}", post["date_text"])
+            .replace("{{title}}", html_mod.escape(post["title"]))
+            .replace("{{excerpt}}", html_mod.escape(post["excerpt"]))
+        )
+        chips = "".join("<span>%s</span>" % html_mod.escape(t) for t in post["tags"])
+        filled = filled.replace("{{tags}}", '<div class="tags">%s</div>' % chips if chips else "")
+        rows.append(filled)
+    return "\n\n".join(rows)
 
 
-def render(rel, text):
-    text = fill(text, "AURORA", PARTIALS.joinpath("aurora.html").read_text(encoding="utf-8"))
-    text = fill(text, "NAV", PARTIALS.joinpath("nav.html").read_text(encoding="utf-8")
-                .replace("{{cur_about}}", ' aria-current="page"' if nav_key(rel) == "about" else "")
-                .replace("{{cur_posts}}", ' aria-current="page"' if nav_key(rel) == "posts" else "")
-                .replace("{{cur_cv}}", ' aria-current="page"' if nav_key(rel) == "cv" else ""))
-    text = fill(text, "FOOTER", PARTIALS.joinpath("footer.html").read_text(encoding="utf-8"))
-    if has_block(text, "POSTLIST"):
-        text = fill(text, "POSTLIST", build_posts_list())
-    return text
+# ---------------------------------------------------------------- main
+
+
+def collect():
+    posts = [load_post(p) for p in sorted(POSTS.glob("*.md"))]
+    for post in posts:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", post["date_iso"]):
+            raise SystemExit("posts/%s.md: date must look like 2025-10-19" % post["slug"])
+
+    stale_dirs = [
+        d.name
+        for d in POSTS.iterdir()
+        if d.is_dir() and (d / "index.html").exists() and not (POSTS / (d.name + ".md")).exists()
+    ]
+    if stale_dirs:
+        print(
+            "warning: generated folders with no source left behind: %s" % ", ".join(stale_dirs),
+            file=sys.stderr,
+        )
+
+    outputs = {}
+    for rel in PAGES:
+        path = ROOT / rel
+        if not path.exists():
+            raise SystemExit("missing page: %s" % rel)
+        outputs[path] = render(rel, path.read_text(encoding="utf-8"), posts)
+
+    for post in posts:
+        rel = "posts/%s/index.html" % post["slug"]
+        outputs[ROOT / rel] = render(rel, render_post(post), posts)
+
+    return outputs
 
 
 def main():
     check = "--check" in sys.argv
     stale = []
 
-    for path in pages():
+    for path, content in sorted(collect().items()):
         rel = path.relative_to(ROOT).as_posix()
-        original = path.read_text(encoding="utf-8")
-        updated = render(rel, original)
-        if updated == original:
+        current = path.read_text(encoding="utf-8") if path.exists() else None
+        if current == content:
             continue
         if check:
             stale.append(rel)
         else:
-            path.write_text(updated, encoding="utf-8", newline="\n")
-            print("updated %s" % rel)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8", newline="\n")
+            print("wrote %s" % rel)
 
     if check and stale:
         print("out of date: %s" % ", ".join(stale), file=sys.stderr)
