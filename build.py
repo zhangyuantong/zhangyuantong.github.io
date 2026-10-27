@@ -4,8 +4,9 @@
 Everything that appears on more than one page lives in partials/ and is
 pasted in here between HTML markers:
 
-    <!-- NAV:START -->    ... <!-- NAV:END -->
-    <!-- FOOTER:START --> ... <!-- FOOTER:END -->
+    <!-- AURORA:START -->   ... <!-- AURORA:END -->
+    <!-- NAV:START -->      ... <!-- NAV:END -->
+    <!-- FOOTER:START -->   ... <!-- FOOTER:END -->
     <!-- POSTLIST:START --> ... <!-- POSTLIST:END -->   (posts/index.html only)
 
 The post list is derived from the post pages themselves, so a new article
@@ -31,8 +32,6 @@ NAV_ACTIVE = {
 }
 # posts/*/index.html are all "posts"
 POSTS_DIR = ROOT / "posts"
-
-BLOCKS = ("NAV", "FOOTER", "POSTLIST")
 
 TIME_RE = re.compile(r'<time datetime="([\d-]+)">([^<]+)</time>')
 TITLE_RE = re.compile(r'<section class="article-head wrap">.*?<h1>(.*?)</h1>', re.S)
@@ -138,6 +137,7 @@ def build_posts_list():
 
 
 def render(rel, text):
+    text = fill(text, "AURORA", PARTIALS.joinpath("aurora.html").read_text(encoding="utf-8"))
     text = fill(text, "NAV", PARTIALS.joinpath("nav.html").read_text(encoding="utf-8")
                 .replace("{{cur_about}}", ' aria-current="page"' if nav_key(rel) == "about" else "")
                 .replace("{{cur_posts}}", ' aria-current="page"' if nav_key(rel) == "posts" else "")

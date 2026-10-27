@@ -12,7 +12,7 @@ repo is exactly what the browser gets.
 | CV | `cv/index.html` |
 | Post list | generated — see below |
 | One article | `posts/<slug>/index.html` |
-| Nav bar, footer | `partials/nav.html`, `partials/footer.html` |
+| Nav bar, footer, page glow | `partials/nav.html`, `partials/footer.html`, `partials/aurora.html` |
 | Colours, type, spacing, motion | `assets/style.css` (colour variables at the top) |
 | Behaviour | `assets/main.js` |
 | Build | `build.py` |
@@ -24,13 +24,13 @@ Anything that appears on more than one page lives in `partials/` and is pasted
 in by `build.py` between markers:
 
 ```html
-<!-- NAV:START -->
+<!-- AURORA:START -->
 ...generated...
-<!-- NAV:END -->
+<!-- AURORA:END -->
 ```
 
-So the nav is written once, in `partials/nav.html`. To change a label, or add a
-page, edit that file and run:
+So the nav is written once, in `partials/nav.html`, and the background glow once,
+in `partials/aurora.html`. To change either, edit that file and run:
 
 ```sh
 python build.py
@@ -146,6 +146,7 @@ about/index.html        old /about/ link, redirects home
 404.html
 partials/nav.html       the nav, written once
 partials/footer.html    the footer, written once
+partials/aurora.html    the background glow, written once
 partials/post-row.html  template for one row of the post list
 build.py                pastes the partials in and builds the post list
 .githooks/pre-commit    refuses a commit when the build is stale

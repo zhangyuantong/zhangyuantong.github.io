@@ -66,7 +66,7 @@ a { color: inherit; text-decoration: none; }
    software rendering on machines without GPU acceleration. */
 
 .aurora {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -80,13 +80,17 @@ a { color: inherit; text-decoration: none; }
   opacity: .55;
 }
 
+/* Ambient light for the top of the page. The layer is absolutely positioned,
+   so it belongs to the top of the document and scrolls away instead of
+   sticking to the corner of the viewport. */
+
 .aurora span:nth-child(1) {
   width: 60vw; height: 60vw;
-  top: -18vw; left: -12vw;
+  top: -46vw; left: -34vw;
   background: radial-gradient(circle,
-    rgba(214, 172, 99, .30) 0%,
-    rgba(214, 172, 99, .13) 32%,
-    rgba(214, 172, 99, .04) 52%,
+    rgba(214, 172, 99, .20) 0%,
+    rgba(214, 172, 99, .10) 32%,
+    rgba(214, 172, 99, .03) 52%,
     transparent 70%);
   animation: drift-a 26s var(--ease) infinite alternate;
 }
