@@ -1,0 +1,18 @@
+#!/bin/sh
+# Blocks a commit when a generated block (nav, footer, post list) is stale.
+# Enable once per clone with:  git config core.hooksPath .githooks
+
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v py >/dev/null 2>&1; then
+  PY=py
+else
+  echo "pre-commit: python not on PATH, skipping the build check" >&2
+  exit 0
+fi
+
+"$PY" build.py --check || {
+  echo "" >&2
+  echo "a generated block is out of date. run: python build.py" >&2
+  exit 1
+}

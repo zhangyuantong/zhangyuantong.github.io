@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.className += ' js';</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traffic Jam for Snails — Victor Zhang</title>
+<meta name="description" content="N snails on a one-way road, each moving at its own number. The expected number of groups is the harmonic series.">
+<meta name="post:tags" content="brain-teaser, probability">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' fill='%23d6ac63' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/katex/katex.min.css">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="spotlight" aria-hidden="true"></div>
+<div class="reading-progress" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/"><i></i><span>Victor Zhang</span></a>
+      <!-- NAV:START -->
+      <nav class="nav">
+        <a href="/">About</a>
+        <a href="/posts/" aria-current="page">Posts</a>
+        <a href="/cv/">CV</a>
+      </nav>
+      <!-- NAV:END -->
+    </div>
+  </header>
+
+  <main>
+
+    <section class="article-head wrap">
+      <p class="article-meta">
+        <time datetime="2025-10-19">2025.10.19</time>
+        <span>4 min read</span>
+        <span>brain-teaser · probability</span>
+      </p>
+      <h1>Traffic Jam for Snails</h1>
+    </section>
+
+    <article class="article-body wrap">
+
+      <p>Suppose there are $N$ snails and we number them through 1 to $N$, and surprisingly their speed is exactly the same as their number: snail No.1 has a speed of 1m/s, snail No.2 has a speed of 2m/s and etc. Then we randomly place them on a one way road and they start moving. If a fast snail encounters a slow snail, the fast one will reduce its speed and they form a group of snails. If a snail has a speed that no snail can chase it and it cannot chase any other snail, then it forms a group of snails by itself. After a really really long time, what is the expected number of groups of snails?</p>
+
+      <p>The answer is $\sum_{n=1}^{N} \frac{1}{n}$. Let's break it down step by step.</p>
+
+      <p>We just need to consider how many <strong>leaders</strong> there will be, so we can figure out how many groups will finally be formed.</p>
+
+      <ul>
+        <li>The first snail (by location) will always lead a group.</li>
+
+        <li>The probability of the second snail leading a group, which is the same as the probability that the second snail is slower than the first one, is $\frac{1}{2}$.
+          <ul>
+            <li>Just a probability trick: for any two random numbers $a$ and $b$, the probability that $a$ is greater than $b$ is, by symmetry, $\frac{1}{2}$.</li>
+            <li>Or you can validate this by calculation:
+              <ul>
+                <li>If the first snail is No.100, then among all 99 snails left, the probability that the second snail is slower is $99/99$,</li>
+                <li>If the first snail is No.99, then among all 99 snails left, the probability that the second snail is slower is $98/99$,</li>
+                <li>$\cdots$</li>
+                <li>Combine all these cases: the probability that the first snail is No.100 is $1/100$ and that of the second snail is slower is $99/99$, and so on</li>
+                <li>$\sum_{p=1}^{100}\frac{p-1}{99}\cdot\frac{1}{100} = \frac{1}{100}\cdot\frac{1}{99}\sum_{p=0}^{99}p = \frac{1}{100}\cdot\frac{\frac{(0+99)\cdot100}{2}}{99} = \frac{1}{100}\cdot50=0.5$</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+
+        <li>The probability of the third snail leading a group, which is the same as the probability that the third snail is slower than the first two, is $\frac{1}{3}$.
+          <ul>
+            <li>The rationale is the same, so let's skip the calculation. By intuition, we are actually choosing the smallest number among three random numbers $a$, $b$, and $c$. The probability that $a$ is the smallest is $\frac{1}{3}$.</li>
+          </ul>
+        </li>
+
+        <li>$\cdots$</li>
+
+        <li>Combining all these cases, the expected number will be $\sum_{n=1}^{N} \frac{1}{n}$.</li>
+      </ul>
+
+      <p>A simple Python snippet to validate the result.</p>
+
+<pre><code>import numpy as np
+
+num_of_snails = 100
+num_of_trials = 10000000
+
+all_snails = np.array([np.random.permutation(num_of_snails)+1 for _ in range(num_of_trials)])
+
+cum_min = np.minimum.accumulate(all_snails, axis=1)
+
+unique_counts = np.array([len(np.unique(row)) for row in cum_min])
+
+print(np.mean(unique_counts))</code></pre>
+
+      <p><a href="/posts/">← All posts</a></p>
+
+    </article>
+
+  </main>
+
+  <footer class="site-footer">
+    <!-- FOOTER:START -->
+    <span>© <span data-year></span> Victor Zhang</span>
+    <span><a href="mailto:v_zhang@icloud.com">Say hello</a></span>
+    <!-- FOOTER:END -->
+  </footer>
+
+</div>
+
+<script src="/assets/katex/katex.min.js"></script>
+<script src="/assets/katex/auto-render.min.js"></script>
+<script src="/assets/main.js"></script>
+</body>
+</html>

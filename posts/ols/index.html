@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.className += ' js';</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ordinary Least Squares — Victor Zhang</title>
+<meta name="description" content="A rigorous derivation of the OLS estimator, its unbiasedness, consistency, and asymptotic normality under classical linear model assumptions.">
+<meta name="post:tags" content="econ, statistics">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='17' fill='%23d6ac63' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/katex/katex.min.css">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="spotlight" aria-hidden="true"></div>
+<div class="reading-progress" aria-hidden="true"></div>
+
+<div class="shell">
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/"><i></i><span>Victor Zhang</span></a>
+      <!-- NAV:START -->
+      <nav class="nav">
+        <a href="/">About</a>
+        <a href="/posts/" aria-current="page">Posts</a>
+        <a href="/cv/">CV</a>
+      </nav>
+      <!-- NAV:END -->
+    </div>
+  </header>
+
+  <main>
+
+    <section class="article-head wrap">
+      <p class="article-meta">
+        <time datetime="2025-10-20">2025.10.20</time>
+        <span>9 min read</span>
+        <span>econ · statistics</span>
+      </p>
+      <h1>Ordinary Least Squares: Assumptions and Statistical Properties</h1>
+    </section>
+
+    <article class="article-body wrap">
+
+      <h2>1. Model setup</h2>
+
+      <p>We consider the standard linear regression model in matrix form:</p>
+
+      <p>$$
+      y = X\beta + \varepsilon,
+      $$</p>
+
+      <p>where</p>
+
+      <ul>
+        <li>$y \in \mathbb{R}^{n\times 1}$ is the vector of dependent variables,</li>
+        <li>$X \in \mathbb{R}^{n\times k}$ is the regressor matrix (assume full column rank $k$),</li>
+        <li>$\beta \in \mathbb{R}^{k\times 1}$ is the vector of parameters,</li>
+        <li>$\varepsilon \in \mathbb{R}^{n\times 1}$ is the disturbance vector.</li>
+      </ul>
+
+      <h2>2. Classical assumptions (Gauss–Markov style)</h2>
+
+      <ol>
+        <li><strong>Linearity.</strong> The data-generating process is $y = X\beta + \varepsilon$.</li>
+        <li><strong>Full rank.</strong> $\mathrm{rank}(X)=k$, so $X'X$ is invertible.</li>
+        <li><strong>Exogeneity.</strong> $\mathbb{E}[\varepsilon\mid X]=0$ (zero conditional mean).</li>
+        <li><strong>Homoskedasticity &amp; No serial correlation.</strong> $\mathrm{Var}(\varepsilon\mid X)=\sigma^2 I_n$.</li>
+        <li><strong>Finite moments.</strong> $\mathbb{E}[\varepsilon_i^2]&lt;\infty$.</li>
+        <li><strong>(For large-sample results)</strong> As $n\to\infty$, $\frac{1}{n}X'X \xrightarrow{p} Q$ where $Q$ is positive definite.</li>
+      </ol>
+
+      <h2>3. OLS estimator: derivation</h2>
+
+      <p>The OLS estimator minimizes the residual sum of squares:</p>
+
+      <p>$$
+      \hat\beta = \arg\min_b (y-Xb)'(y-Xb).
+      $$</p>
+
+      <p>Differentiate with respect to $b$ and set the gradient to zero:</p>
+
+      <p>$$
+      \frac{\partial}{\partial b} (y-Xb)'(y-Xb) = -2X'(y-Xb) = 0.
+      $$</p>
+
+      <p>Solving the normal equations yields the closed form:</p>
+
+      <p>$$
+      \boxed{\hat\beta = (X'X)^{-1}X'y.}
+      $$</p>
+
+      <p>Substituting $y=X\beta+\varepsilon$ gives the useful decomposition</p>
+
+      <p>$$
+      \hat\beta = \beta + (X'X)^{-1}X'\varepsilon.
+      $$</p>
+
+      <h2>4. Unbiasedness</h2>
+
+      <p>Take expectations conditional on $X$:</p>
+
+      <p>$$
+      \mathbb{E}[\hat\beta\mid X] = \beta + (X'X)^{-1}X'\mathbb{E}[\varepsilon\mid X] = \beta.
+      $$</p>
+
+      <p>Therefore</p>
+
+      <p>$$
+      \boxed{\mathbb{E}[\hat\beta]=\beta,}
+      $$</p>
+
+      <p>so $\hat\beta$ is unbiased under the zero conditional mean assumption.</p>
+
+      <h2>5. Variance of $\hat\beta$</h2>
+
+      <p>Starting from the OLS estimator:</p>
+
+      <p>$$
+      \hat\beta = \beta + (X'X)^{-1}X'\varepsilon.
+      $$</p>
+
+      <p>Because $\beta$ is non-random (or we condition on $X$), the sampling variability of $\hat\beta$ comes from the term $(X'X)^{-1}X'\varepsilon$. Compute its conditional variance given $X$:</p>
+
+      <p>$$
+      \begin{aligned}
+      \mathrm{Var}(\hat\beta\mid X)
+      &amp;= \mathrm{Var}\!\left((X'X)^{-1}X'\varepsilon \;\middle|\; X\right) \\
+      &amp;= (X'X)^{-1}X'\,\mathrm{Var}(\varepsilon\mid X)\,X(X'X)^{-1}.
+      \end{aligned}
+      $$</p>
+
+      <p>Under the <strong>homoskedasticity</strong> and <strong>no serial correlation</strong> assumption,</p>
+
+      <p>$$
+      \mathrm{Var}(\varepsilon\mid X)=\sigma^2 I_n,
+      $$</p>
+
+      <p>so</p>
+
+      <p>$$
+      \begin{aligned}
+      \mathrm{Var}(\hat\beta\mid X)
+      &amp;= (X'X)^{-1}X'(\sigma^2 I_n)X(X'X)^{-1} \\
+      &amp;= \sigma^2 (X'X)^{-1}(X'X)(X'X)^{-1} \\
+      &amp;= \sigma^2 (X'X)^{-1}.
+      \end{aligned}
+      $$</p>
+
+      <p>Hence, conditional on $X$,</p>
+
+      <p>$$
+      \boxed{\mathrm{Var}(\hat\beta\mid X)=\sigma^2 (X'X)^{-1}.}
+      $$</p>
+
+      <p>This is the finite-sample covariance of the OLS estimator. If $X$ is random, this can be interpreted conditionally on the realized design matrix.</p>
+
+      <h3>5.1 Unbiased estimator of $\sigma^2$</h3>
+
+      <p>Because $\sigma^2$ is usually unknown, we estimate it from the residuals. Define</p>
+
+      <p>$$
+      \hat\varepsilon = y - X\hat\beta = (I_n - P)y,
+      \qquad P := X(X'X)^{-1}X'
+      $$</p>
+
+      <p>where $P$ is the <strong>projection matrix</strong> onto the column space of $X$. The residual sum of squares (SSR) is</p>
+
+      <p>$$
+      \mathrm{SSR} = \hat\varepsilon'\hat\varepsilon = y'(I_n - P)y.
+      $$</p>
+
+      <p>Under the model $y = X\beta + \varepsilon$, with $\mathbb{E}[\varepsilon\mid X]=0$, we have</p>
+
+      <p>$$
+      \mathrm{SSR} = \varepsilon'(I_n - P)\varepsilon.
+      $$</p>
+
+      <p>Take expectations conditional on $X$:</p>
+
+      <p>$$
+      \mathbb{E}[\mathrm{SSR}\mid X]
+      = \mathbb{E}\big[\varepsilon'(I_n-P)\varepsilon \mid X\big]
+      = \sigma^2\,\mathrm{tr}(I_n - P).
+      $$</p>
+
+      <p>Since $\mathrm{tr}(P)=\mathrm{rank}(P)=k$, we have $\mathrm{tr}(I_n - P)=n-k$. Thus,</p>
+
+      <p>$$
+      \mathbb{E}[\mathrm{SSR}\mid X] = (n-k)\sigma^2.
+      $$</p>
+
+      <p>Therefore, the <strong>unbiased estimator of $\sigma^2$</strong> is</p>
+
+      <p>$$
+      \boxed{\hat\sigma^2 = \frac{\mathrm{SSR}}{n-k} = \frac{\hat\varepsilon'\hat\varepsilon}{n-k},}
+      $$</p>
+
+      <p>and $\mathbb{E}[\hat\sigma^2\mid X] = \sigma^2$.</p>
+
+      <h3>5.2 Estimated covariance and standard errors</h3>
+
+      <p>Replacing $\sigma^2$ with $\hat\sigma^2$ gives the standard estimated covariance matrix of $\hat\beta$:</p>
+
+      <p>$$
+      \widehat{\mathrm{Var}}(\hat\beta\mid X) = \hat\sigma^2 (X'X)^{-1}.
+      $$</p>
+
+      <p>The estimated standard errors (componentwise) are:</p>
+
+      <p>$$
+      \widehat{\mathrm{se}}(\hat\beta_j) = \sqrt{\hat\sigma^2 \big[(X'X)^{-1}\big]_{jj}}.
+      $$</p>
+
+      <h2>6. Consistency</h2>
+
+      <p>From the decomposition</p>
+
+      <p>$$
+      \hat\beta - \beta = (X'X)^{-1}X'\varepsilon
+      = \left(\tfrac{1}{n}X'X\right)^{-1}\left(\tfrac{1}{n}X'\varepsilon\right).
+      $$</p>
+
+      <p>Under the assumptions:</p>
+
+      <ul>
+        <li>$\tfrac{1}{n}X'X \xrightarrow{p} Q$ with $Q$ positive definite,</li>
+        <li>$\tfrac{1}{n}X'\varepsilon \xrightarrow{p} 0$ (follows from the law of large numbers under exogeneity and finite second moments),</li>
+      </ul>
+
+      <p>we apply Slutsky's theorem: the inverse term converges in probability to $Q^{-1}$ and the second factor goes to $0$, hence</p>
+
+      <p>$$
+      \boxed{\hat\beta \xrightarrow{p} \beta.}
+      $$</p>
+
+      <p>Thus $\hat\beta$ is consistent.</p>
+
+      <p><em>Remark on $\tfrac{1}{n}X'\varepsilon \xrightarrow{p} 0$: if rows $x_i'$ of $X$ and $\varepsilon_i$ satisfy $\mathbb{E}[x_i\varepsilon_i]=0$ and have uniformly bounded second moments, then by the weak law of large numbers the sample average $\frac{1}{n}\sum_i x_i\varepsilon_i$ tends to zero in probability.</em></p>
+
+      <h2>7. Asymptotic normality</h2>
+
+      <p>Start from</p>
+
+      <p>$$
+      \sqrt{n}(\hat\beta-\beta) = \left(\frac{X'X}{n}\right)^{-1}\frac{X'\varepsilon}{\sqrt{n}}.
+      $$</p>
+
+      <p>Assume Lindeberg–Feller (or Liapounov) conditions so that a multivariate CLT applies to the sum $\sum_i x_i\varepsilon_i$. Concretely, if $\{(x_i,\varepsilon_i)\}_{i=1}^n$ are independent (or weakly dependent under appropriate mixing conditions), mean zero with finite second moments, then</p>
+
+      <p>$$
+      \frac{1}{\sqrt{n}}X'\varepsilon = \frac{1}{\sqrt{n}}\sum_{i=1}^n x_i\varepsilon_i \xrightarrow{d} \mathcal{N}(0,\sigma^2 Q),
+      $$</p>
+
+      <p>where $Q=\lim_{n\to\infty}\frac{1}{n}X'X$. By Slutsky's theorem, and since $\frac{1}{n}X'X \xrightarrow{p} Q$, we obtain</p>
+
+      <p>$$
+      \boxed{\sqrt{n}(\hat\beta-\beta)\xrightarrow{d}\mathcal{N}(0,\sigma^2 Q^{-1}).}
+      $$</p>
+
+      <p>Equivalently, for large $n$, approximately</p>
+
+      <p>$$
+      \hat\beta \approx \mathcal{N}\!\left(\beta,\;\frac{\sigma^2}{n}Q^{-1}\right).
+      $$</p>
+
+      <h2>8. Finite-sample remark (Gauss–Markov)</h2>
+
+      <p>Under the Gauss–Markov assumptions (in particular conditional homoskedasticity and exogeneity) and treating $X$ as non-random or conditioning on $X$, the OLS estimator is the Best Linear Unbiased Estimator (BLUE): among all linear unbiased estimators $\tilde\beta = A y$ with deterministic $A$ such that $\mathbb{E}[\tilde\beta\mid X]=\beta$, $\hat\beta$ has minimum variance. The classical proof proceeds by writing any such $\tilde\beta$ as $\hat\beta + C\varepsilon$ for some matrix $C$ and showing $\mathrm{Var}(\tilde\beta\mid X)-\mathrm{Var}(\hat\beta\mid X)=\sigma^2 CC'$ is positive semidefinite.</p>
+
+      <p><a href="/posts/">← All posts</a></p>
+
+    </article>
+
+  </main>
+
+  <footer class="site-footer">
+    <!-- FOOTER:START -->
+    <span>© <span data-year></span> Victor Zhang</span>
+    <span><a href="mailto:v_zhang@icloud.com">Say hello</a></span>
+    <!-- FOOTER:END -->
+  </footer>
+
+</div>
+
+<script src="/assets/katex/katex.min.js"></script>
+<script src="/assets/katex/auto-render.min.js"></script>
+<script src="/assets/main.js"></script>
+</body>
+</html>
